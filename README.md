@@ -3,6 +3,8 @@ es-index-cloner
 
 Clone one elastic search index to another
 
+- Clones documents along with mappings.
+- Configure shard and replica count for the newly created index
 
 Steps to execute:
 
