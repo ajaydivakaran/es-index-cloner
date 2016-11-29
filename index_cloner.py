@@ -27,7 +27,7 @@ class IndexCloner(object):
             conn.indices.put_mapping(doc_type, mapping, self.target_index)
 
     def _get_mappings(self):
-        r = requests.get('http://%s/%s/_mapping' % (self.source_es_server, self.source_index))
+        r = requests.get('%s/%s/_mapping' % (self.source_es_server, self.source_index))
         assert r.status_code == 200, "Failed to retrieve mappings from index: %s" % self.source_index
         source_mappings = json.loads(r.content)
         return source_mappings[self.source_index]
@@ -47,8 +47,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Clone elasticsearch index')
     parser.add_argument('-s', action="store", dest='source_index', help="Source index to copy from")
     parser.add_argument('-t', action="store", dest='target_index', help="Target index")
-    parser.add_argument('-e', action="store", dest='source_es_server', default="127.0.0.1:9200", help="Elasticsearch ip:port - default(127.0.0.1:9200)")
-    parser.add_argument('-d', action="store", dest='target_es_server', default="127.0.0.1:9200", help="Elasticsearch ip:port - default(127.0.0.1:9200)")
+    parser.add_argument('-e', action="store", dest='source_es_server', default="http://127.0.0.1:9200", help="Elasticsearch ip:port - default(http://127.0.0.1:9200)")
+    parser.add_argument('-d', action="store", dest='target_es_server', default="http://127.0.0.1:9200", help="Elasticsearch ip:port - default(http://127.0.0.1:9200)")
     parser.add_argument('-p', action="store", dest='primary_shards', default=3, help="primary shards in target index - default(3)")
     parser.add_argument('-r', action="store", dest='replica_shards', default=0, help="replica shards in target index - default(0)")
     arguments = parser.parse_args()
