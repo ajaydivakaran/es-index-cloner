@@ -33,14 +33,15 @@ class IndexCloner(object):
         return source_mappings[self.source_index]
 
     def _copy_data(self):
-        conn = pyes.ES(self.target_es_server)
+        source_conn = pyes.ES(self.source_es_server)
+        target_conn = pyes.ES(self.target_es_server)
         search = pyes.query.MatchAllQuery().search(bulk_read=1000)
         mappings_types = self._get_mappings().keys()
         for type in mappings_types:
-            hits = conn.search(search, self.source_index, type, scan=True, scroll="30m", model=lambda _, hit: hit)
+            hits = source_conn.search(search, self.source_index, type, scan=True, scroll="30m", model=lambda _, hit: hit)
             for hit in hits:
-                conn.index(hit['_source'], self.target_index, type, hit['_id'], bulk=True)
-            conn.indices.flush(self.target_index)
+                target_conn.index(hit['_source'], self.target_index, type, hit['_id'], bulk=True)
+            target_conn.indices.flush(self.target_index)
 
 
 if __name__ == '__main__':
