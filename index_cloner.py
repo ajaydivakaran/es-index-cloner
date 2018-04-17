@@ -17,26 +17,43 @@ class IndexCloner(object):
         self._copy_mappings()
         self._copy_data()
 
+    def merge(self, weaker, stronger):
+        for key in stronger:
+            if key in weaker:
+                if isinstance(weaker[key], dict) and isinstance(stronger[key], dict):
+                    self.merge(weaker[key], stronger[key])
+                elif weaker[key] != stronger[key]:
+                    weaker[key] = stronger[key]
+            else:
+                weaker[key] = stronger[key]
+        return weaker
+
     def _copy_mappings(self):
-        source_mappings = self._get_mappings()
         conn = pyes.ES(self.source_es_server)
-        index_settings = {
-            "settings": {"index": {"number_of_shards": self.shard_count, "number_of_replicas": self.replica_count}}}
+        base_index_settings = {
+            "settings": {"index": {"number_of_shards": self.shard_count, "number_of_replicas": self.replica_count}}
+        }
+        source = self._get_index()
+        index_settings = self.merge(source, base_index_settings)
         conn.indices.create_index_if_missing(self.target_index, index_settings)
-        for doc_type, mapping in source_mappings.iteritems():
-            conn.indices.put_mapping(doc_type, mapping, self.target_index)
+
+    def _get_index(self):
+        r = requests.get('%s/%s' % (self.source_es_server, self.source_index))
+        assert r.status_code == 200, "Failed to retrieve index: %s" % self.source_index
+        source = json.loads(r.content)
+        return source.values().pop()
 
     def _get_mappings(self):
         r = requests.get('%s/%s/_mapping' % (self.source_es_server, self.source_index))
         assert r.status_code == 200, "Failed to retrieve mappings from index: %s" % self.source_index
         source_mappings = json.loads(r.content)
-        return source_mappings[self.source_index]
+        return source_mappings.values().pop()
 
     def _copy_data(self):
         source_conn = pyes.ES(self.source_es_server)
         target_conn = pyes.ES(self.target_es_server)
         search = pyes.query.MatchAllQuery().search(bulk_read=1000)
-        mappings_types = self._get_mappings().keys()
+        mappings_types = self._get_mappings()["mappings"].keys()
         for type in mappings_types:
             hits = source_conn.search(search, self.source_index, type, scan=True, scroll="30m", model=lambda _, hit: hit)
             for hit in hits:
